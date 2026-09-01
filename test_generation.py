@@ -1,13 +1,10 @@
 import os
 import json
-from dotenv import load_dotenv
 from bible_manager import load_bible
 from prompt_builder import PromptBuilder
 from provider_factory import get_ai_provider
 
 def run_test():
-    # 1. Load environment variables
-    load_dotenv()
     
     # 2. Check for API Key (specific to Gemini for this test)
     provider_name = os.getenv("AI_PROVIDER", "gemini")

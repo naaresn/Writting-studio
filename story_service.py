@@ -1,4 +1,5 @@
 from bible_manager import load_bible
+from relationship_manager import load_relationships
 from database import get_latest_story_context, save_chapter
 from provider_factory import get_ai_provider
 from prompt_builder import PromptBuilder
@@ -29,6 +30,9 @@ class StoryService:
         """
         # 1. Load the project's Story Bible
         bible = load_bible(project_name)
+        
+        # 1a. Load Relationship Memory
+        relationship_memory = load_relationships(project_name)
 
         # 2. Get the requested provider
         ai_provider = get_ai_provider(provider_name)
@@ -44,7 +48,8 @@ class StoryService:
             tone=tone,
             length=length,
             writing_profile=writing_profile,
-            previous_summaries=context
+            previous_summaries=context,
+            relationship_memory=relationship_memory
         )
 
         # 5. Generate the chapter

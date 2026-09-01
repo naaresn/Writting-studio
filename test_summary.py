@@ -1,10 +1,8 @@
 import os
-from dotenv import load_dotenv
 from summary_builder import SummaryBuilder
 from provider_factory import get_ai_provider
 
 def run_test():
-    load_dotenv()
     
     # 1. Sample Indonesian Chapter
     sample_chapter = """

@@ -15,7 +15,7 @@ class OllamaProvider(AIProvider):
 
     def __init__(
         self,
-        model_name: str = None,
+        model_name: str,
         temperature: float = None,
         top_p: float = None,
         repeat_penalty: float = None,
@@ -24,7 +24,7 @@ class OllamaProvider(AIProvider):
     ):
         # Read environment variables with sensible defaults
         self.host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-        self.model_name = model_name if model_name is not None else os.getenv("OLLAMA_MODEL", "qwen2.5:3b")
+        self.model_name = model_name
         
         # Generation options with overrides from env vars or constructor arguments
         try:
@@ -38,9 +38,9 @@ class OllamaProvider(AIProvider):
             self.top_p = 0.9
             
         try:
-            self.repeat_penalty = repeat_penalty if repeat_penalty is not None else float(os.getenv("OLLAMA_REPEAT_PENALTY", "1.12"))
+            self.repeat_penalty = repeat_penalty if repeat_penalty is not None else float(os.getenv("OLLAMA_REPEAT_PENALTY", "1.1"))
         except ValueError:
-            self.repeat_penalty = 1.12
+            self.repeat_penalty = 1.1
             
         try:
             self.num_ctx = num_ctx if num_ctx is not None else int(os.getenv("OLLAMA_NUM_CTX", "4096"))
@@ -75,9 +75,12 @@ class OllamaProvider(AIProvider):
             headers={"Content-Type": "application/json"}
         )
         
+        # Log prompt length for debugging
+        logger.info(f"Prompt length: {len(prompt)} characters.")
+        
         try:
             logger.info(f"Sending prompt to Ollama ({self.model_name}) at {self.host}...")
-            with urllib.request.urlopen(req) as response:
+            with urllib.request.urlopen(req, timeout=120) as response:
                 res_data = response.read().decode("utf-8")
                 res_json = json.loads(res_data)
                 text = res_json.get("response", "")
@@ -90,9 +93,15 @@ class OllamaProvider(AIProvider):
                 text = self._strip_reasoning_text(text)
                 logger.info("Successfully received Ollama response.")
                 return text
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                raise Exception(f"Model '{self.model_name}' not found on Ollama server at {self.host}. Please run 'ollama pull {self.model_name}'")
+            else:
+                logger.exception(f"Ollama HTTP Error: {e.code} - {e.reason}")
+                raise Exception(f"Ollama API error ({e.code}): {e.reason}")
         except urllib.error.URLError as e:
             logger.exception(f"Ollama Connection Error: {str(e)}")
-            raise ConnectionError(f"Could not connect to Ollama at {self.host}. Please ensure Ollama is running and '{self.model_name}' is installed.")
+            raise ConnectionError(f"Could not connect to Ollama at {self.host}. Please ensure Ollama is running.")
         except Exception as e:
             logger.exception(f"Ollama Provider Error: {str(e)}")
             raise e

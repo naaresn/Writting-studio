@@ -1,21 +1,18 @@
 import os
 import logging
 from google import genai
-from dotenv import load_dotenv
 from ai_provider import AIProvider
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-load_dotenv()
-
 class GeminiProvider(AIProvider):
     """Implementation of AIProvider for Google's Gemini API."""
 
-    def __init__(self):
-        api_key = os.getenv("GEMINI_API_KEY")
-        self.model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+    def __init__(self, api_key: str, model_name: str):
+        self.api_key = api_key
+        self.model_name = model_name
 
         if not api_key:
             raise ValueError("GEMINI_API_KEY not found in environment variables.")

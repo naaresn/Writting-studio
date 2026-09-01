@@ -1,4 +1,5 @@
-from system_prompts import COMMON_WRITING_PROMPT, STANDARD_FICTION_PROFILE, MATURE_FICTION_PROFILE, ROGUE_CREATIVE_PROFILE
+from system_prompts import COMMON_WRITING_PROMPT, OLLAMA_INDONESIAN_ROMANCE_PROMPT, STANDARD_FICTION_PROFILE, MATURE_FICTION_PROFILE, GEMMA_CREATIVE_PROFILE
+from mature_fiction_prompt import MATURE_FICTION_MODULE
 
 class PromptBuilder:
     """Constructs structured prompts for the story generation based on story context and writing profiles."""
@@ -16,26 +17,22 @@ class PromptBuilder:
         tone: str,
         length: str,
         writing_profile: str = "standard",
-        previous_summaries: list = None
+        previous_summaries: list = None,
+        provider_type: str = "gemini",
+        relationship_memory: dict = None
     ) -> str:
         """
-        Combines all elements into a final prompt string in the specified order:
-        1. Common writing prompt
-        2. Selected writing profile
-        3. Story Bible
-        4. Previous chapter summaries
-        5. Current story context
-        6. User-selected tone
-        7. Desired length
-        8. User's rough storyline
+        Combines all elements into a final prompt string.
         
         Args:
             bible (dict): Contains 'characters', 'relationships', 'setting', 'writing_rules', and optional 'context'.
             storyline (str): The specific scene or plot point to write.
             tone (str): The desired emotional or stylistic tone.
             length (str): The target length (e.g., 'short scene', 'full chapter').
-            writing_profile (str): The writing profile ('standard', 'mature', or 'rogue_creative'). Defaults to 'standard'.
+            writing_profile (str): The writing profile ('standard', 'mature', or 'gemma_creative'). Defaults to 'standard'.
             previous_summaries (list): List of previous chapter summaries.
+            provider_type (str): 'gemini' or 'ollama'.
+            relationship_memory (dict): Optional dictionary of relationship memories (running_gags, habits, etc.)
             
         Returns:
             str: The fully formatted prompt.
@@ -43,14 +40,19 @@ class PromptBuilder:
         if not bible:
             bible = {}
 
-        # 1. Common writing prompt
-        common_prompt = COMMON_WRITING_PROMPT
+        # 1. Common writing prompt / Ollama prompt
+        if provider_type == "ollama":
+            base_prompt = OLLAMA_INDONESIAN_ROMANCE_PROMPT
+        else:
+            base_prompt = COMMON_WRITING_PROMPT
 
         # 2. Selected writing profile
+        mature_module = ""
         if writing_profile == "mature":
             selected_profile = MATURE_FICTION_PROFILE
-        elif writing_profile == "rogue_creative":
-            selected_profile = ROGUE_CREATIVE_PROFILE
+            mature_module = f"\n\n{MATURE_FICTION_MODULE}"
+        elif writing_profile == "gemma_creative":
+            selected_profile = GEMMA_CREATIVE_PROFILE
         else:
             selected_profile = STANDARD_FICTION_PROFILE
 
@@ -73,7 +75,25 @@ WORLD SETTING:
 WRITING RULES:
 {rules}"""
 
-        # 4. Previous chapter summaries
+        # 4. Relationship Memory
+        if relationship_memory:
+            formatted_memories = []
+            for category, data in relationship_memory.items():
+                content = data.get("content", "").strip()
+                priority = data.get("priority", "Medium")
+                if content:
+                    category_name = category.replace("_", " ").title()
+                    formatted_memories.append(f"{category_name} (Priority: {priority}):\n{content}")
+            
+            if formatted_memories:
+                relationship_section = f"""--- RELATIONSHIP MEMORY ---
+{chr(10).join(formatted_memories)}"""
+            else:
+                relationship_section = "--- RELATIONSHIP MEMORY ---\nNo specific relationship memories defined yet."
+        else:
+            relationship_section = "--- RELATIONSHIP MEMORY ---\nNo specific relationship memories defined yet."
+
+        # 5. Previous chapter summaries
         if previous_summaries:
             summaries_list = "\n".join(f"- {s.strip()}" for s in previous_summaries if s and s.strip())
             prev_summaries_section = f"""--- PREVIOUS CHAPTER SUMMARIES ---
@@ -82,30 +102,33 @@ WRITING RULES:
             prev_summaries_section = """--- PREVIOUS CHAPTER SUMMARIES ---
 No previous chapters."""
 
-        # 5. Current story context
+        # 6. Current story context
         current_context = bible.get("context", "Not defined.")
         current_context_section = f"""--- CURRENT STORY CONTEXT ---
 {current_context}"""
 
-        # 6. User-selected tone
+        # 7. User-selected tone
         tone_section = f"""--- TARGET TONE ---
 {tone}"""
 
-        # 7. Desired length
+        # 8. Desired length
         length_section = f"""--- TARGET LENGTH ---
 {length}"""
 
-        # 8. User's rough storyline
+        # 9. User's rough storyline
         storyline_section = f"""--- ROUGH STORYLINE / SCENE INSTRUCTION ---
 {storyline}"""
 
         # Combine all sections in the requested order
         full_prompt = f"""
-{common_prompt}
+{base_prompt}
 
 {selected_profile}
+{mature_module}
 
 {story_bible_section}
+
+{relationship_section}
 
 {prev_summaries_section}
 
@@ -133,13 +156,28 @@ if __name__ == "__main__":
         "context": "They have just met in a coffee shop."
     }
     
+    # Test Gemini prompt
     test_prompt = builder.build_chapter_prompt(
         mock_bible, 
         "Elias meets Sarah in a dark alley.", 
         "Gritty Noir", 
         "Short Scene",
         writing_profile="standard",
-        previous_summaries=["Elias arrived in the city.", "Sarah called him."]
+        previous_summaries=["Elias arrived in the city.", "Sarah called him."],
+        provider_type="gemini"
     )
-    print("--- GENERATED PROMPT PREVIEW ---")
+    print("--- GENERATED GEMINI PROMPT PREVIEW ---")
     print(test_prompt)
+    
+    # Test Ollama prompt
+    test_prompt_ollama = builder.build_chapter_prompt(
+        mock_bible, 
+        "Elias meets Sarah in a dark alley.", 
+        "Gritty Noir", 
+        "Short Scene",
+        writing_profile="standard",
+        previous_summaries=["Elias arrived in the city.", "Sarah called him."],
+        provider_type="ollama"
+    )
+    print("\n--- GENERATED OLLAMA PROMPT PREVIEW ---")
+    print(test_prompt_ollama)

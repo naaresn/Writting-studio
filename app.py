@@ -1,8 +1,16 @@
 import streamlit as st
+from dotenv import load_dotenv
 import database
 import bible_manager
+import relationship_manager
 from story_service import StoryService
 import os
+import logging
+
+# Load environment variables once at startup
+load_dotenv()
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Initialize database
 database.init_db()
@@ -52,6 +60,33 @@ if selected_project_name:
         context = st.text_area("Current story context", value=bible_data.get("context", ""), height=100)
         style = st.text_area("Writing style and rules", value=bible_data.get("writing_rules", ""), height=100)
         
+        # Relationship Memory
+        st.subheader("Relationship Memory")
+        rel_data = relationship_manager.load_relationships(selected_project_name)
+        rel_inputs = {}
+        
+        with st.expander("Manage Relationship Memory"):
+            fields = [
+                ("running_gags", "Running Gags"),
+                ("habits", "Habits"),
+                ("love_languages", "Love Languages"),
+                ("comfort_behaviors", "Comfort Behaviors"),
+                ("inside_jokes", "Inside Jokes"),
+                ("daily_rituals", "Daily Rituals"),
+                ("nicknames", "Nicknames"),
+                ("pet_peeves", "Pet Peeves"),
+                ("shared_memories", "Shared Memories"),
+                ("relationship_evolution", "Relationship Evolution")
+            ]
+            
+            for key, label in fields:
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    content = st.text_area(label, value=rel_data[key].get("content", ""), key=f"{project_id}_{key}_content")
+                with col2:
+                    priority = st.selectbox("Priority", ["Low", "Medium", "High"], index=["Low", "Medium", "High"].index(rel_data[key].get("priority", "Medium")), key=f"{project_id}_{key}_priority")
+                rel_inputs[key] = {"content": content, "priority": priority}
+
         if st.button("Save Bible"):
             new_bible = {
                 "characters": characters,
@@ -61,7 +96,8 @@ if selected_project_name:
                 "writing_rules": style
             }
             bible_manager.save_bible(selected_project_name, new_bible)
-            st.success("Story Bible saved!")
+            relationship_manager.save_relationships(selected_project_name, rel_inputs)
+            st.success("Story Bible and Relationship Memory saved!")
 
     # TAB 2: Writing Room
     with tab2:
@@ -74,18 +110,21 @@ if selected_project_name:
             length = st.selectbox("Length", ["Short Scene", "Medium Scene", "Long Chapter"])
         
         with col2:
-            provider = st.selectbox("AI Provider", ["Gemini", "Qwen Local"])
+            provider = st.selectbox("AI Provider", ["Gemini", "Qwen Local", "Gemma Creative"])
             
-            # Map UI labels to backend values
-            provider_map = {"Gemini": "gemini", "Qwen Local": "qwen"}
+            # Map UI labels to backend keys
+            provider_map = {"Gemini": "Gemini", "Qwen Local": "Qwen Local", "Gemma Creative": "Gemma Creative"}
             selected_provider_key = provider_map[provider]
             
             profile = "standard"
-            if selected_provider_key == "qwen":
+            if selected_provider_key == "Qwen Local":
                 profile_option = st.selectbox("Writing Profile", ["Standard Fiction", "Mature Fiction (18+)"])
                 st.caption("For fictional consenting adult characters only.")
                 if profile_option == "Mature Fiction (18+)":
                     profile = "mature"
+            elif selected_provider_key == "Gemma Creative":
+                profile = "gemma_creative"
+                st.write("Profile: Gemma Creative (Optimized for long-form fiction)")
             else:
                 st.write("Profile: Standard Fiction")
         
@@ -120,8 +159,6 @@ if selected_project_name:
             st.write("No chapters created for this project yet.")
         else:
             for ch in chapters:
-                # ch is (id, title, storyline, content, tone, length, summary, created_at, provider, model, writing_profile)
-                # indices: 0:id, 1:title, 2:storyline, 3:content, 4:tone, 5:length, 6:summary, 7:created_at, 8:provider, 9:model, 10:writing_profile
                 with st.expander(f"{ch[1]} - {ch[7]}"):
                     st.write(f"**Storyline:** {ch[2]}")
                     st.write(f"**Tone:** {ch[4]}")
