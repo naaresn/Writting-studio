@@ -4,4 +4,7 @@ __pycache__/
 venv/
 *.pyc
 .aider*
-data/story_studio_personal.db
+projects/*.json
+
+!projects/Sample Story_bible.json
+!projects/sample_bible.json
