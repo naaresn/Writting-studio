@@ -1,3 +1,6 @@
 streamlit==1.60.0
 google-genai==2.16.0
 python-dotenv==1.2.2
+openai
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.9

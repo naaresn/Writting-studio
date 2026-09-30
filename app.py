@@ -8,7 +8,7 @@ import os
 import logging
 
 # Load environment variables once at startup
-load_dotenv()
+load_dotenv(override=True)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -110,16 +110,26 @@ if selected_project_name:
             length = st.selectbox("Length", ["Short Scene", "Medium Scene", "Long Chapter"])
         
         with col2:
-            provider = st.selectbox("AI Provider", ["Gemini", "Qwen Local", "Gemma Creative"])
+            provider = st.selectbox("AI Provider", ["Gemini", "OpenRouter (Qwen)", "Qwen Local", "Gemma Creative"])
             
             # Map UI labels to backend keys
-            provider_map = {"Gemini": "Gemini", "Qwen Local": "Qwen Local", "Gemma Creative": "Gemma Creative"}
+            provider_map = {
+                "Gemini": "Gemini",
+                "OpenRouter (Qwen)": "OpenRouter (Qwen)",
+                "Qwen Local": "Qwen Local",
+                "Gemma Creative": "Gemma Creative"
+            }
             selected_provider_key = provider_map[provider]
             
             profile = "standard"
             if selected_provider_key == "Qwen Local":
                 profile_option = st.selectbox("Writing Profile", ["Standard Fiction", "Mature Fiction (18+)"])
                 st.caption("For fictional consenting adult characters only.")
+                if profile_option == "Mature Fiction (18+)":
+                    profile = "mature"
+            elif selected_provider_key == "OpenRouter (Qwen)":
+                profile_option = st.selectbox("Writing Profile", ["Standard Fiction", "Mature Fiction (18+)"])
+                st.caption("Powered by OpenRouter API (Qwen model).")
                 if profile_option == "Mature Fiction (18+)":
                     profile = "mature"
             elif selected_provider_key == "Gemma Creative":
